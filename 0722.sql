@@ -172,3 +172,123 @@ WITH b2 AS (
 )
 
 SELECT b2.* FROM b2;
+
+---- p231
+---- 분석함수 window 함수
+---- 문법
+---- 분석함수(매개변수) over(partition by)
+---- 분석함수
+---- row_number()/rownum
+
+SELECT
+    department_id
+    ,emp_name
+    ,ROW_NUMBER()OVER(PARTITION BY department_id
+                        ORDER BY department_id,emp_name)dep_rows
+FROM employees;
+
+SELECT
+    department_id
+    ,emp_name   
+    , RANK()OVER(PARTITION BY department_id ORDER BY salary)dep_rank
+FROM employees;
+
+SELECT department_id
+        , emp_name
+        ,salary
+        ,DENSE_RANK() OVER (PARTITION BY department_id ORDER BY salary ) dep_rank
+      FROM employees;
+      
+---- p.234
+---- WITH 절 응용
+
+with temp AS (
+SELECT 
+    department_id
+    , emp_name
+    , salary
+    -- , RANK () OVER (PARTITION BY department_id ORDER BY salary) dep_rank
+    , DENSE_RANK () OVER (PARTITION BY department_id ORDER BY salary) dep_rank
+FROM employees)
+
+SELECT * 
+FROM (SELECT 
+    department_id
+    , emp_name
+    , salary
+    -- , RANK () OVER (PARTITION BY department_id ORDER BY salary) dep_rank
+    , DENSE_RANK () OVER (PARTITION BY department_id ORDER BY salary) dep_rank
+FROM employees)
+WHERE dep_rank <= 3;
+
+---- CUME_DIST : 상대적인 누적분포도 값 반환
+
+SELECT
+    department_id
+    , emp_name
+    , salary
+    ,CUME_DIST()OVER(PARTITION BY department_id
+                    ORDER BY salary)dep_dist
+FROM employees;
+
+---- PERCENT_RANK
+---- 백분위 순위 반환
+---- 60번 부서에 대한 CUME_DIST, PERCENT_RANK 값 조회
+
+---- P.236
+---- NTIME(숫자) 함수
+---- 5개의 행을 숫자 만큼 담는다
+
+ SELECT 
+    department_id
+    , emp_name
+    , salary
+    , NTILE(4) OVER (PARTITION BY department_id ORDER BY salary) NTILES
+FROM employees
+WHERE department_id IN (30, 60);
+
+---- LAG - 선행 로우 값 반환
+---- LEAD - 후행 로우 값 반환
+---- 로우가 없을 시 DEFAULT로 명시한 값 반환 
+
+ SELECT 
+    emp_name
+    , hire_date
+    , salary
+    , LAG(salary, 1, 0)  OVER (ORDER BY hire_date) AS prev_sal
+    , LEAD(salary, 1, 0) OVER (ORDER BY hire_date) AS next_sal
+FROM employees
+WHERE department_id = 30;
+
+---- WINDOW 함수
+---- P.240
+---- 정렬은 입사일자 순 처리
+---- UNBOUNDED PRECEDING 급여, 부서별 입사일자가 가장 빠른 사원
+---- UNBOUNDED FOLLOWING 부서별 입사잊자가 가장 늦은 사원
+---- 누적 합계
+
+SELECT
+    department_id
+    , emp_name
+    , hire_date
+    , salary
+    , SUM(salary)OVER(PARTITION BY department_id ORDER BY hire_date
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)AS all_salary
+FROM employees
+WHERE  department_id IN(30,90);
+
+
+SELECT
+    department_id
+    , emp_name
+    , hire_date
+    , salary
+    , SUM(salary)OVER(PARTITION BY department_id ORDER BY hire_date
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)AS all_salary
+    , SUM(salary)OVER(PARTITION BY department_id ORDER BY hire_date
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)AS first_current_sal
+    , SUM(salary)OVER(PARTITION BY department_id ORDER BY hire_date
+                    ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)AS current_end_sal           
+
+FROM employees
+WHERE  department_id IN(30,90);
